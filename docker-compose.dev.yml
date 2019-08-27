@@ -1,0 +1,11 @@
+version: '3'
+services:
+  storage:
+    image: mongo:4.2.0
+    environment:
+      - TERM=xterm
+      - MONGO_INITDB_DATABASE=codemonx
+      - MONGO_INITDB_ROOT_USERNAME=codemonx
+      - MONGO_INITDB_ROOT_PASSWORD=VW32n93N
+    ports:
+      - 27017:27017
