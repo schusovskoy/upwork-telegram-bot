@@ -62,3 +62,12 @@ const pipeWithThen = R.pipeWith(R.then)
 export const pipeP = (...args) => pipeWithThen(args)
 
 export const wait = sec => new Promise(res => setTimeout(res, sec * 1000))
+
+export const pathEq = R.curry((path, val, obj) =>
+  R.pipe(
+    () => path,
+    R.match(/[^[\].]+/g),
+    R.map(x => parseInt(x) || x),
+    R.pathEq(R.__, val, obj),
+  )(),
+)
