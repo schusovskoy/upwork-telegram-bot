@@ -4,8 +4,11 @@ import * as controllers from './config/controllers'
 import * as R from 'ramda'
 import { prodOrDev, wait, ENV, addReqLogger } from './utils'
 import mongoose from 'mongoose'
-import { TelegramBot } from './services'
-import { POLLING_ERROR_TIMEOUT } from './config/constants'
+import { TelegramBot, Upwork } from './services'
+import {
+  POLLING_ERROR_TIMEOUT,
+  UPWORK_POLLING_TIMEOUT,
+} from './config/constants'
 
 mongoose.connect(ENV.MONGO_URL, {
   useNewUrlParser: true,
@@ -25,14 +28,26 @@ R.pipe(
   R.forEach(x => x(app)),
 )()
 
-const poll = () =>
+const pollTelegram = () =>
   TelegramBot.getUpdates()
     .catch(
-      // eslint-disable-next-line no-console
-      x => console.log('Polling Error: ', x) || wait(POLLING_ERROR_TIMEOUT),
+      x =>
+        // eslint-disable-next-line no-console
+        console.log('Telegram polling Error: ', x) ||
+        wait(POLLING_ERROR_TIMEOUT),
     )
-    .then(poll)
-poll()
+    .then(pollTelegram)
+pollTelegram()
+
+const pollUpwork = () =>
+  Upwork.updateFeed()
+    .catch(
+      // eslint-disable-next-line no-console
+      x => console.log('Upwork polling Error: ', x),
+    )
+    .then(() => wait(UPWORK_POLLING_TIMEOUT))
+    .then(pollUpwork)
+pollUpwork()
 
 app.listen(3000, () => {
   // eslint-disable-next-line no-console

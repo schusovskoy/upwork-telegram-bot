@@ -2,7 +2,7 @@ import fetch from 'node-fetch'
 import { BOT_TIMEOUT } from '../config/constants'
 import * as R from 'ramda'
 import { pipeP, ENV, pathEq } from '../utils'
-import { inject } from '../aspects'
+import { inject, paramsToContext } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
 
@@ -55,6 +55,25 @@ export const getUpdates = R.compose(
             }) => chatRepository.remove([id]),
           ],
         ]),
+      ),
+      x => Promise.all(x),
+    )(),
+)
+
+export const sendMessage = R.compose(
+  paramsToContext('text'),
+  inject({ name: 'chatRepository', singleton: ChatRepository }),
+)(
+  //
+  ({ text, chatRepository }) =>
+    pipeP(
+      () => chatRepository.getAll(),
+      R.map(({ chatId: chat_id }) =>
+        fetch(`${TELEGRAM_BASE}/sendMessage`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
+        }),
       ),
       x => Promise.all(x),
     )(),

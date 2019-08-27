@@ -66,8 +66,22 @@ export const wait = sec => new Promise(res => setTimeout(res, sec * 1000))
 export const pathEq = R.curry((path, val, obj) =>
   R.pipe(
     () => path,
-    R.match(/[^[\].]+/g),
-    R.map(x => parseInt(x) || x),
+    pathStrToArr,
     R.pathEq(R.__, val, obj),
   )(),
 )
+
+export const path = R.curry((path, obj) =>
+  R.pipe(
+    () => path,
+    pathStrToArr,
+    R.path(R.__, obj),
+  )(),
+)
+
+const pathStrToArr = path =>
+  R.pipe(
+    () => path,
+    R.match(/[^[\].]+/g),
+    R.map(x => parseInt(x) || x),
+  )()
