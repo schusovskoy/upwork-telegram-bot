@@ -1,7 +1,7 @@
 import fetch from 'node-fetch'
 import { BOT_TIMEOUT } from '../config/constants'
 import * as R from 'ramda'
-import { pipeP, ENV, pathEq } from '../utils'
+import { pipeP, ENV, pathEq, pathSatisfies } from '../utils'
 import { inject, paramsToContext } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
@@ -33,7 +33,7 @@ export const getUpdates = R.compose(
             lastUpdateId && settingsRepository.update({ lastUpdateId }),
         ),
       ),
-      R.filter(R.pathSatisfies(R.test(/^\/.+/), ['message', 'text'])),
+      R.filter(pathSatisfies(R.test(/^\/.+/), 'message.text')),
 
       R.map(
         R.cond([
