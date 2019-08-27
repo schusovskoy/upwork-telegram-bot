@@ -1,0 +1,64 @@
+import * as R from 'ramda'
+import Joi from '@hapi/joi'
+
+export const mapIndexed = R.addIndex(R.map)
+export const filterIndexed = R.addIndex(R.filter)
+export const reduceIndexed = R.addIndex(R.reduce)
+
+export const prodOrDev = R.curry((ifProd, ifDev) =>
+  R.ifElse(
+    () => process.env.NODE_ENV === 'production',
+    typeof ifProd === 'function' ? ifProd : () => ifProd,
+    typeof ifDev === 'function' ? ifDev : () => ifDev,
+  )(),
+)
+
+export const arraySum = R.reduce((acc, x) => acc + x, 0)
+
+export const getRandomNumber = max => Math.floor(Math.random() * (max + 1))
+
+export const createUniqNumGenerator = () => {
+  const cache = []
+
+  const generate = max => {
+    const num = getRandomNumber(max)
+    if (!R.contains(num, cache)) {
+      cache.push(num)
+      return num
+    }
+    return generate(max)
+  }
+
+  return generate
+}
+
+export const randomSort = list =>
+  list.length <= 1
+    ? list
+    : R.pipe(
+        () => list,
+        R.sort(() => (Math.random() >= 0.5 ? 1 : -1)),
+        R.when(R.equals(list), randomSort),
+      )()
+
+export const getFileExtension = R.replace(/^.*?(\.\w+)$/, '$1')
+
+export const validate = (obj, schema) =>
+  Joi.validate(obj, schema, { abortEarly: false }).catch(x => x)
+
+export const convertToBoolean = joi => ({
+  name: 'toBoolean',
+  base: joi.boolean(),
+  coerce: (value, state, options) => !!value,
+})
+
+export const convertToSort = joi => ({
+  name: 'toSort',
+  base: joi.string(),
+  coerce: (value, state, options) => (value === 'true' ? 'asc' : 'desc'),
+})
+
+const pipeWithThen = R.pipeWith(R.then)
+export const pipeP = (...args) => pipeWithThen(args)
+
+export const wait = sec => new Promise(res => setTimeout(res, sec * 1000))
