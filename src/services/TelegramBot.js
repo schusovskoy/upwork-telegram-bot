@@ -15,6 +15,7 @@ export const getUpdates = R.compose(
   //
   ({ settingsRepository, chatRepository }) =>
     pipeP(
+      // Fetch new messages
       () => settingsRepository.get(),
       ({ lastUpdateId }) => lastUpdateId + 1,
       offset =>
@@ -25,6 +26,8 @@ export const getUpdates = R.compose(
         }),
       x => x.json(),
       R.prop('result'),
+
+      // Update lastUpdateId
       R.tap(
         R.pipe(
           R.last,
@@ -33,8 +36,11 @@ export const getUpdates = R.compose(
             lastUpdateId && settingsRepository.update({ lastUpdateId }),
         ),
       ),
+
+      // Leave only commands
       R.filter(pathSatisfies(R.test(/^\/.+/), 'message.text')),
 
+      // Process commands
       R.map(
         R.cond([
           [
