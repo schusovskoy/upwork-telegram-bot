@@ -15,6 +15,7 @@ services:
   storage:
     image: mongo:4.2.0
     environment:
+      - TERM=xterm
       - MONGO_INITDB_DATABASE=codemonx
       - MONGO_INITDB_ROOT_USERNAME=codemonx
       - MONGO_INITDB_ROOT_PASSWORD=VW32n93N
@@ -22,5 +23,14 @@ services:
       - storage-data:/data/db
     restart: always
 
+  job-storage:
+    image: redis:5.0.5-alpine
+    environment:
+      - TERM=xterm
+    volumes:
+      - job-storage-data:/data
+    restart: always
+
 volumes:
   storage-data:
+  job-storage-data:
