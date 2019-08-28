@@ -41,16 +41,15 @@ export const updateFeed = R.compose(
         ),
       ),
 
-      // Split on groups and send to chats
-      R.splitEvery(3),
+      // Send posts to chats
       R.map(
         R.pipe(
-          R.map(({ title, description }) => `<b>${title}</b>\n${description}`),
-          R.join('\n\n===========================================\n\n'),
+          ({ title, description }) => `<b>${title}</b>\n${description}`,
           R.replace(/<br \/>/g, '\n'),
-          text => text && telegramBot.sendMessage(text),
         ),
       ),
+      x => Logger.log('Texts', x) || x,
+      R.map(telegramBot.sendMessage),
       x => Promise.all(x),
     )(),
 )
