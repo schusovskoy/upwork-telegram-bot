@@ -61,6 +61,19 @@ export const getUpdates = R.compose(
               },
             }) => chatRepository.remove([id]).then(() => Upwork.removeJob(id)),
           ],
+
+          [
+            pathSatisfies(R.test(/^\/changeUpworkUrl /), 'message.text'),
+            ({
+              message: {
+                chat: { id },
+                text,
+              },
+            }) =>
+              chatRepository.updateByChatId(id, {
+                upworkUrl: R.replace(/^\/changeUpworkUrl /, '', text),
+              }),
+          ],
         ]),
       ),
       x => Promise.all(x),
