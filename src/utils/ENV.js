@@ -11,15 +11,15 @@ const current = dotenv.config({
   ),
 })
 
+const local = dotenv.config({
+  path: path.resolve(process.cwd(), '.env.local'),
+})
+
 const currentLocal = dotenv.config({
   path: path.resolve(
     process.cwd(),
     `.env.${process.env.NODE_ENV || 'development'}.local`,
   ),
-})
-
-const local = dotenv.config({
-  path: path.resolve(process.cwd(), '.env.local'),
 })
 
 const ENV = R.mergeAll(

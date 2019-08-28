@@ -5,11 +5,11 @@ export const mapIndexed = R.addIndex(R.map)
 export const filterIndexed = R.addIndex(R.filter)
 export const reduceIndexed = R.addIndex(R.reduce)
 
-export const prodOrDev = R.curry((ifProd, ifDev) =>
+export const prodOrNot = R.curry((ifProd, ifNot) =>
   R.ifElse(
     () => process.env.NODE_ENV === 'production',
     typeof ifProd === 'function' ? ifProd : () => ifProd,
-    typeof ifDev === 'function' ? ifDev : () => ifDev,
+    typeof ifNot === 'function' ? ifNot : () => ifNot,
   )(),
 )
 

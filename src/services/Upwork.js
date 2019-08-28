@@ -1,5 +1,5 @@
 import parser from 'fast-xml-parser'
-import { pipeP, path } from '../utils'
+import { pipeP, path, Logger } from '../utils'
 import fetch from 'node-fetch'
 import * as R from 'ramda'
 import { SettingsRepository } from '../modules/settings'
@@ -16,16 +16,22 @@ export const updateFeed = R.compose(
   //
   ({ settingsRepository, telegramBot }) =>
     pipeP(
+      // Fetch feed and parse
       () => fetch(UPWORK_URL),
       x => x.text(),
       x => parser.parse(x),
       path('rss.channel.item'),
       R.map(R.evolve({ pubDate: x => new Date(x).getTime() })),
+      x => Logger.log('Items', x) || x,
 
+      // Filter feed, leave only new
       x => Promise.all([settingsRepository.get(), x]),
+      x => Logger.log('Settings', x) || x,
       ([{ lastPubDate }, x]) =>
         R.filter(({ pubDate }) => lastPubDate < pubDate, x),
+      x => Logger.log('Filtered', x) || x,
 
+      // Update lastPubDate
       R.tap(
         R.pipe(
           R.head,
@@ -35,9 +41,16 @@ export const updateFeed = R.compose(
         ),
       ),
 
-      R.map(({ title, description }) => `<b>${title}</b>\n${description}`),
-      R.join('\n\n===========================================\n\n'),
-      R.replace(/<br \/>/g, '\n'),
-      text => text && telegramBot.sendMessage(text),
+      // Split on groups and send to chats
+      R.splitEvery(3),
+      R.map(
+        R.pipe(
+          R.map(({ title, description }) => `<b>${title}</b>\n${description}`),
+          R.join('\n\n===========================================\n\n'),
+          R.replace(/<br \/>/g, '\n'),
+          text => text && telegramBot.sendMessage(text),
+        ),
+      ),
+      x => Promise.all(x),
     )(),
 )
