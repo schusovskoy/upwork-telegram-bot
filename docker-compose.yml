@@ -1,0 +1,26 @@
+version: '3'
+services:
+  api:
+    image: registry.gitlab.com/codemonx/upwork-telegram-bot
+    depends_on:
+      - storage
+    environment:
+      - TERM=xterm
+    networks:
+      default:
+        aliases:
+          - upwork-telegram-bot
+    restart: always
+
+  storage:
+    image: mongo:4.2.0
+    environment:
+      - MONGO_INITDB_DATABASE=codemonx
+      - MONGO_INITDB_ROOT_USERNAME=codemonx
+      - MONGO_INITDB_ROOT_PASSWORD=VW32n93N
+    volumes:
+      - storage-data:/data/db
+    restart: always
+
+volumes:
+  storage-data:

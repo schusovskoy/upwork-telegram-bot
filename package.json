@@ -1,0 +1,83 @@
+{
+  "name": "upwork-telegram-bot",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://gitlab.com/codemonx/upwork-telegram-bot#readme",
+  "bugs": {
+    "url": "https://gitlab.com/codemonx/upwork-telegram-bot/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/codemonx/upwork-telegram-bot.git"
+  },
+  "license": "ISC",
+  "author": "Codemonx",
+  "main": "./src/app.js",
+  "scripts": {
+    "build": "babel src -d build",
+    "docker:build": "docker build -t registry.gitlab.com/codemonx/upwork-telegram-bot:$TAG -t registry.gitlab.com/codemonx/upwork-telegram-bot:latest .",
+    "docker:clear-all": "docker ps -a --format \"{{.ID}}\" | xargs docker stop | xargs docker rm ; docker volume ls --format \"{{.Name}}\" | xargs docker volume rm ; docker network ls --format \"{{.Name}}\" | grep -v 'bridge\\|host\\|none' | xargs docker network rm",
+    "docker:down": "docker-compose -f docker-compose.dev.yml down",
+    "docker:push": "docker push registry.gitlab.com/codemonx/upwork-telegram-bot",
+    "docker:up": "docker-compose -f docker-compose.dev.yml up -d",
+    "precommit": "lint-staged",
+    "start": "node ./build/app.js",
+    "watch": "nodemon --inspect ./src/app.js --exec babel-node"
+  },
+  "lint-staged": {
+    "src/**/*.js": [
+      "prettier --write",
+      "eslint",
+      "git add"
+    ]
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "all"
+  },
+  "eslintConfig": {
+    "extends": "react-app",
+    "rules": {
+      "import/no-unresolved": "error",
+      "import/named": "error",
+      "import/namespace": "error",
+      "import/no-duplicates": "error",
+      "no-console": "error"
+    }
+  },
+  "dependencies": {
+    "@hapi/joi": "^15.1.1",
+    "body-parser": "^1.19.0",
+    "common-tags": "^1.8.0",
+    "dotenv": "^8.1.0",
+    "express": "^4.17.1",
+    "fast-xml-parser": "^3.12.20",
+    "mongoose": "^5.6.11",
+    "morgan": "^1.9.1",
+    "node-fetch": "^2.6.0",
+    "ramda": "^0.26.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.5.5",
+    "@babel/core": "^7.5.5",
+    "@babel/node": "^7.5.5",
+    "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
+    "babel-core": "^7.0.0-bridge.0",
+    "babel-eslint": "10.x",
+    "chalk": "^2.4.2",
+    "eslint": "6.x",
+    "eslint-config-react-app": "^5.0.1",
+    "eslint-plugin-flowtype": "3.x",
+    "eslint-plugin-import": "2.x",
+    "eslint-plugin-jsx-a11y": "6.x",
+    "eslint-plugin-react": "7.x",
+    "eslint-plugin-react-hooks": "1.x",
+    "husky": "^3.0.4",
+    "lint-staged": "^9.2.5",
+    "nodemon": "^1.19.1",
+    "prettier": "^1.18.2",
+    "regenerator-runtime": "^0.13.3"
+  }
+}
