@@ -4,7 +4,7 @@ import * as controllers from './config/controllers'
 import * as R from 'ramda'
 import { prodOrNot, wait, ENV, addReqLogger, Logger } from './utils'
 import mongoose from 'mongoose'
-import { TelegramBot, Upwork } from './services'
+import { TelegramBot } from './services'
 import { POLLING_ERROR_TIMEOUT } from './config/constants'
 
 mongoose.connect(ENV.MONGO_URL, {
@@ -34,12 +34,5 @@ const pollTelegram = () =>
     )
     .then(pollTelegram)
 pollTelegram()
-
-const pollUpwork = () =>
-  Upwork.updateFeed()
-    .catch(x => Logger.error('Upwork polling Error: ', x))
-    .then(() => wait(ENV.UPWORK_POLLING_TIMEOUT))
-    .then(pollUpwork)
-pollUpwork()
 
 app.listen(3000, () => Logger.info('Server is listening on port 3000'))

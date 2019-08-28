@@ -1,35 +1,47 @@
 import parser from 'fast-xml-parser'
-import { pipeP, path, Logger } from '../utils'
+import { pipeP, path, Logger, ENV } from '../utils'
 import fetch from 'node-fetch'
 import * as R from 'ramda'
-import { SettingsRepository } from '../modules/settings'
-import { inject } from '../aspects'
+import { inject, paramsToContext } from '../aspects'
 import * as TelegramBot from './TelegramBot'
+import Queue from 'bull'
+import { ChatRepository } from '../modules/chat'
 
-const UPWORK_URL =
-  'https://www.upwork.com/ab/feed/jobs/rss?budget=5000-&verified_payment_only=1&q=react&subcategory2=desktop_software_development%2Cecommerce_development%2Cmobile_development%2Cweb_development%2Cother_software_development&sort=recency&paging=0%3B10&api_params=1&securityToken=d31af4cf0ca7fb45c6d73b6bf8bc224f69ef9c115778922bc2278ff4410c60eb1829a64da374ceb01e820b831a06805752a0a99876ffbf896c7f3d1c1c65808e&userUid=780053258792939520&orgUid=920310540010647552'
+export const addJob = chatId =>
+  upworkQueue.add(
+    { chatId },
+    { jobId: chatId, repeat: { every: ENV.UPWORK_POLLING_TIMEOUT } },
+  )
 
-export const updateFeed = R.compose(
-  inject({ name: 'settingsRepository', singleton: SettingsRepository }),
+export const removeJob = chatId =>
+  pipeP(
+    () => upworkQueue.getJob(chatId),
+    job => job && job.remove(),
+  )()
+
+const upworkQueue = new Queue('upwork', ENV.REDIS_URL)
+upworkQueue.process(job => updateFeed(job))
+
+const updateFeed = R.compose(
+  paramsToContext('data'),
   inject({ name: 'telegramBot', singleton: TelegramBot }),
+  inject({ name: 'chatRepository', singleton: ChatRepository }),
 )(
   //
-  ({ settingsRepository, telegramBot }) =>
+  ({ data: { chatId }, telegramBot, chatRepository }) =>
     pipeP(
       // Fetch feed and parse
-      () => fetch(UPWORK_URL),
+      () => chatRepository.findByChatId(chatId),
+      ({ upworkUrl }) => fetch(upworkUrl),
       x => x.text(),
       x => parser.parse(x),
       path('rss.channel.item'),
       R.map(R.evolve({ pubDate: x => new Date(x).getTime() })),
-      x => Logger.log('Items', x) || x,
 
       // Filter feed, leave only new
-      x => Promise.all([settingsRepository.get(), x]),
-      x => Logger.log('Settings', x) || x,
+      x => Promise.all([chatRepository.findByChatId(chatId), x]),
       ([{ lastPubDate }, x]) =>
         R.filter(({ pubDate }) => lastPubDate < pubDate, x),
-      x => Logger.log('Filtered', x) || x,
 
       // Update lastPubDate
       R.tap(
@@ -37,19 +49,18 @@ export const updateFeed = R.compose(
           R.head,
           R.prop('pubDate'),
           lastPubDate =>
-            lastPubDate && settingsRepository.update({ lastPubDate }),
+            lastPubDate &&
+            chatRepository.updateByChatId(chatId, { lastPubDate }),
         ),
       ),
 
-      // Send posts to chats
+      // Send posts to chat
       R.map(
         R.pipe(
           ({ title, description }) => `<b>${title}</b>\n${description}`,
           R.replace(/<br \/>/g, '\n'),
         ),
       ),
-      x => Logger.log('Texts', x) || x,
-      R.map(telegramBot.sendMessage),
-      x => Promise.all(x),
+      R.map(telegramBot.sendMessageToChat(chatId)),
     )(),
 )
