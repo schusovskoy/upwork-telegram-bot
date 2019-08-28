@@ -1,20 +1,15 @@
 version: '3'
 services:
   api:
-    image: node:12.8.0
+    image: registry.gitlab.com/codemonx/upwork-telegram-bot
     depends_on:
       - storage
     environment:
       - TERM=xterm
-    volumes:
-      - ./:/app
-    expose:
-      - 3000
     networks:
       default:
         aliases:
-          - codemonx-telegram-bot
-    command: sh -c 'cd /app && yarn && yarn build && NODE_ENV=production yarn start'
+          - upwork-telegram-bot
     restart: always
 
   storage:

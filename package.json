@@ -15,6 +15,7 @@
   "main": "./src/app.js",
   "scripts": {
     "build": "babel src -d build",
+    "docker:build": "docker build -t registry.gitlab.com/codemonx/upwork-telegram-bot:$TAG -t registry.gitlab.com/codemonx/upwork-telegram-bot:latest .",
     "docker:clear-all": "docker ps -a --format \"{{.ID}}\" | xargs docker stop | xargs docker rm ; docker volume ls --format \"{{.Name}}\" | xargs docker volume rm ; docker network ls --format \"{{.Name}}\" | grep -v 'bridge\\|host\\|none' | xargs docker network rm",
     "docker:down": "docker-compose -f docker-compose.dev.yml down",
     "docker:up": "docker-compose -f docker-compose.dev.yml up -d",
