@@ -24,8 +24,9 @@ export const remove = chatIds =>
     $in => Chat.deleteMany({ chatId: { $in } }).then(() => {}),
   )()
 
-export const getAll = () => Chat.find()
+export const getAll = () => Chat.find().then(x => x)
 
-export const findByChatId = chatId => Chat.findOne({ chatId })
+export const findByChatId = chatId => Chat.findOne({ chatId }).then(x => x)
 
-export const updateByChatId = (chatId, obj) => Chat.updateOne({ chatId }, obj)
+export const updateByChatId = (chatId, obj) =>
+  Chat.updateOne({ chatId }, obj).then(x => x)

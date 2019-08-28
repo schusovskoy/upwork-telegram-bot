@@ -10,17 +10,20 @@ import { ChatRepository } from '../modules/chat'
 export const addJob = chatId =>
   upworkQueue.add(
     { chatId },
-    { jobId: chatId, repeat: { every: ENV.UPWORK_POLLING_TIMEOUT } },
+    { repeat: { jobId: chatId, every: parseInt(ENV.UPWORK_POLLING_TIMEOUT) } },
   )
 
 export const removeJob = chatId =>
-  pipeP(
-    () => upworkQueue.getJob(chatId),
-    job => job && job.remove(),
-  )()
+  upworkQueue.removeRepeatable({
+    jobId: chatId,
+    every: parseInt(ENV.UPWORK_POLLING_TIMEOUT),
+  })
 
 const upworkQueue = new Queue('upwork', ENV.REDIS_URL)
-upworkQueue.process(job => updateFeed(job))
+upworkQueue.process(({ data }) => updateFeed(data))
+upworkQueue.on('failed', (job, error) =>
+  Logger.error('Upwork polling error: ', job, error),
+)
 
 const updateFeed = R.compose(
   paramsToContext('data'),
