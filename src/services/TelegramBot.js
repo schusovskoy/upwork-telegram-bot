@@ -5,6 +5,7 @@ import { pipeP, ENV, pathEq, pathSatisfies } from '../utils'
 import { inject, paramsToContext } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
+import * as Upwork from './Upwork'
 
 const TELEGRAM_BASE = `https://api.telegram.org/bot${ENV.BOT_TOKEN}`
 
@@ -15,6 +16,7 @@ export const getUpdates = R.compose(
   //
   ({ settingsRepository, chatRepository }) =>
     pipeP(
+      // Fetch new messages
       () => settingsRepository.get(),
       ({ lastUpdateId }) => lastUpdateId + 1,
       offset =>
@@ -25,6 +27,8 @@ export const getUpdates = R.compose(
         }),
       x => x.json(),
       R.prop('result'),
+
+      // Update lastUpdateId
       R.tap(
         R.pipe(
           R.last,
@@ -33,8 +37,11 @@ export const getUpdates = R.compose(
             lastUpdateId && settingsRepository.update({ lastUpdateId }),
         ),
       ),
+
+      // Leave only commands
       R.filter(pathSatisfies(R.test(/^\/.+/), 'message.text')),
 
+      // Process commands
       R.map(
         R.cond([
           [
@@ -43,7 +50,7 @@ export const getUpdates = R.compose(
               message: {
                 chat: { id },
               },
-            }) => chatRepository.add([id]),
+            }) => chatRepository.add([id]).then(() => Upwork.addJob(id)),
           ],
 
           [
@@ -52,7 +59,20 @@ export const getUpdates = R.compose(
               message: {
                 chat: { id },
               },
-            }) => chatRepository.remove([id]),
+            }) => chatRepository.remove([id]).then(() => Upwork.removeJob(id)),
+          ],
+
+          [
+            pathSatisfies(R.test(/^\/changeUpworkUrl /), 'message.text'),
+            ({
+              message: {
+                chat: { id },
+                text,
+              },
+            }) =>
+              chatRepository.updateByChatId(id, {
+                upworkUrl: R.replace(/^\/changeUpworkUrl /, '', text),
+              }),
           ],
         ]),
       ),
@@ -77,4 +97,12 @@ export const sendMessage = R.compose(
       ),
       x => Promise.all(x),
     )(),
+)
+
+export const sendMessageToChat = R.curry((chat_id, text) =>
+  fetch(`${TELEGRAM_BASE}/sendMessage`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
+  }),
 )
