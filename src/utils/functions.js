@@ -93,3 +93,9 @@ const pathStrToArr = path =>
     R.match(/[^[\].]+/g),
     R.map(x => parseInt(x) || x),
   )()
+
+export const cond = (...fns) =>
+  R.compose(
+    R.cond,
+    R.splitEvery(2),
+  )(fns)

@@ -1,11 +1,10 @@
 import fetch from 'node-fetch'
 import { BOT_TIMEOUT } from '../config/constants'
 import * as R from 'ramda'
-import { pipeP, ENV, pathEq, pathSatisfies } from '../utils'
+import { pipeP, ENV, pathEq, pathSatisfies, cond } from '../utils'
 import { inject, paramsToContext } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
-import * as Upwork from './Upwork'
 
 const TELEGRAM_BASE = `https://api.telegram.org/bot${ENV.BOT_TOKEN}`
 
@@ -43,38 +42,27 @@ export const getUpdates = R.compose(
 
       // Process commands
       R.map(
-        R.cond([
-          [
-            pathEq('message.text', '/start'),
-            ({
-              message: {
-                chat: { id },
-              },
-            }) => chatRepository.add([id]).then(() => Upwork.addJob(id)),
-          ],
+        cond(
+          pathEq('message.text', '/start'),
+          ({
+            message: {
+              chat: { id },
+            },
+          }) => chatRepository.add(id),
 
-          [
-            pathEq('message.text', '/stop'),
-            ({
-              message: {
-                chat: { id },
-              },
-            }) => chatRepository.remove([id]).then(() => Upwork.removeJob(id)),
-          ],
+          pathEq('message.text', '/stop'),
+          ({
+            message: {
+              chat: { id },
+            },
+          }) => chatRepository.remove(id),
 
-          [
-            pathSatisfies(R.test(/^\/changeUpworkUrl /), 'message.text'),
-            ({
-              message: {
-                chat: { id },
-                text,
-              },
-            }) =>
-              chatRepository.updateByChatId(id, {
-                upworkUrl: R.replace(/^\/changeUpworkUrl /, '', text),
-              }),
-          ],
-        ]),
+          pathSatisfies(R.test(/^\/changeUpworkUrl /), 'message.text'),
+          ({ message: { text } }) =>
+            settingsRepository.update({
+              upworkUrl: R.replace(/^\/changeUpworkUrl /, '', text),
+            }),
+        ),
       ),
       x => Promise.all(x),
     )(),
