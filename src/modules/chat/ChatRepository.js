@@ -20,9 +20,9 @@ export const remove = chatId =>
     x => x,
   )()
 
-export const getAll = () =>
+export const find = filter =>
   pipeP(
-    () => Chat.find(),
+    () => Chat.find(filter),
     x => x,
   )()
 

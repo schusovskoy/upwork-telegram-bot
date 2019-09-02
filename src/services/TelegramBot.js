@@ -101,7 +101,7 @@ export const sendMessage = R.compose(
   //
   ({ text, chatRepository }) =>
     pipeP(
-      () => chatRepository.getAll(),
+      () => chatRepository.find(),
       R.map(({ chatId: chat_id }) =>
         fetch(`${TELEGRAM_BASE}/sendMessage`, {
           method: 'POST',
@@ -119,4 +119,18 @@ export const sendMessageToChat = R.curry((chat_id, text) =>
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
   }),
+)
+
+export const sendMessagesToChat = R.curry((chat_id, texts) =>
+  R.pipe(
+    () => texts,
+    R.map(text =>
+      fetch(`${TELEGRAM_BASE}/sendMessage`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
+      }),
+    ),
+    x => Promise.all(x),
+  )(),
 )

@@ -4,7 +4,8 @@ const settingsSchema = mongoose.Schema({
   lastUpdateId: Number,
   developmentUrl: String,
   designUrl: String,
-  lastPubDate: Number,
+  developmentLastPubDate: Number,
+  designLastPubDate: Number,
 })
 
 export default mongoose.model('Settings', settingsSchema)

@@ -14,7 +14,8 @@ export const get = () =>
         lastUpdateId: 0,
         developmentUrl: DEFAULT_DEVELOPMENT_URL,
         designUrl: DEFAULT_DESIGN_URL,
-        lastPubDate: new Date().getTime(),
+        developmentLastPubDate: new Date().getTime(),
+        designLastPubDate: new Date().getTime(),
       }),
     x => x,
   )()
