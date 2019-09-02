@@ -1,12 +1,21 @@
 import Settings from './Settings'
 import { pipeP } from '../../utils'
-import { DEFAULT_UPWORK_URL } from '../../config/constants'
+import {
+  DEFAULT_DESIGN_URL,
+  DEFAULT_DEVELOPMENT_URL,
+} from '../../config/constants'
 
 export const get = () =>
   pipeP(
     () => Settings.findOne(),
     x =>
-      x || Settings.create({ lastUpdateId: 0, upworkUrl: DEFAULT_UPWORK_URL }),
+      x ||
+      Settings.create({
+        lastUpdateId: 0,
+        developmentUrl: DEFAULT_DEVELOPMENT_URL,
+        designUrl: DEFAULT_DESIGN_URL,
+        lastPubDate: new Date().getTime(),
+      }),
     x => x,
   )()
 

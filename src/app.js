@@ -37,13 +37,27 @@ const pollTelegram = () =>
 pollTelegram()
 
 const upworkQueue = new Queue('upwork', ENV.REDIS_URL)
-upworkQueue.process(job => Upwork.updateFeed())
+upworkQueue.process(({ data }) => Upwork.updateFeed(data))
 upworkQueue.on('failed', (job, err) =>
-  Logger.error('Upwork polling error: ', err),
+  Logger.error('Upwork polling error: ', job, err),
 )
 upworkQueue.add(
-  {},
-  { repeat: { jobId: 'upwork', every: parseInt(ENV.UPWORK_POLLING_TIMEOUT) } },
+  { type: 'development' },
+  {
+    repeat: {
+      jobId: 'development',
+      every: parseInt(ENV.UPWORK_POLLING_TIMEOUT),
+    },
+  },
+)
+upworkQueue.add(
+  { type: 'design' },
+  {
+    repeat: {
+      jobId: 'design',
+      every: parseInt(ENV.UPWORK_POLLING_TIMEOUT),
+    },
+  },
 )
 
 app.listen(3000, () => Logger.info('Server is listening on port 3000'))

@@ -57,10 +57,36 @@ export const getUpdates = R.compose(
             },
           }) => chatRepository.remove(id),
 
-          pathSatisfies(R.test(/^\/changeUpworkUrl /), 'message.text'),
+          pathSatisfies(R.test(/^\/setDevelopmentUrl /), 'message.text'),
           ({ message: { text } }) =>
             settingsRepository.update({
-              upworkUrl: R.replace(/^\/changeUpworkUrl /, '', text),
+              developmentUrl: R.replace(/^\/setDevelopmentUrl /, '', text),
+            }),
+
+          pathSatisfies(R.test(/^\/setDesignUrl /), 'message.text'),
+          ({ message: { text } }) =>
+            settingsRepository.update({
+              designUrl: R.replace(/^\/setDesignUrl /, '', text),
+            }),
+
+          pathEq('message.text', '/design'),
+          ({
+            message: {
+              chat: { id },
+            },
+          }) =>
+            chatRepository.updateByChatId(id, {
+              type: chatRepository.CHAT_TYPE.DESIGN,
+            }),
+
+          pathEq('message.text', '/development'),
+          ({
+            message: {
+              chat: { id },
+            },
+          }) =>
+            chatRepository.updateByChatId(id, {
+              type: chatRepository.CHAT_TYPE.DEVELOPMENT,
             }),
         ),
       ),

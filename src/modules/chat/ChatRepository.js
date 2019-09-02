@@ -1,9 +1,15 @@
 import Chat from './Chat'
 import { pipeP } from '../../utils'
 
+export const CHAT_TYPE = {
+  NONE: 'NONE',
+  DEVELOPMENT: 'DEVELOPMENT',
+  DESIGN: 'DESIGN',
+}
+
 export const add = chatId =>
   pipeP(
-    () => Promise.resolve(new Chat({ chatId })),
+    () => Promise.resolve(new Chat({ chatId, type: CHAT_TYPE.NONE })),
     x => x.save(),
     x => x,
   )()
