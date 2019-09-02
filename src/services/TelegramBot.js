@@ -1,11 +1,10 @@
 import fetch from 'node-fetch'
 import { BOT_TIMEOUT } from '../config/constants'
 import * as R from 'ramda'
-import { pipeP, ENV, pathEq, pathSatisfies } from '../utils'
+import { pipeP, ENV, pathEq, pathSatisfies, cond } from '../utils'
 import { inject, paramsToContext } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
-import * as Upwork from './Upwork'
 
 const TELEGRAM_BASE = `https://api.telegram.org/bot${ENV.BOT_TOKEN}`
 
@@ -43,57 +42,53 @@ export const getUpdates = R.compose(
 
       // Process commands
       R.map(
-        R.cond([
-          [
-            pathEq('message.text', '/start'),
-            ({
-              message: {
-                chat: { id },
-              },
-            }) => chatRepository.add([id]).then(() => Upwork.addJob(id)),
-          ],
+        cond(
+          pathEq('message.text', '/start'),
+          ({
+            message: {
+              chat: { id },
+            },
+          }) => chatRepository.add(id),
 
-          [
-            pathEq('message.text', '/stop'),
-            ({
-              message: {
-                chat: { id },
-              },
-            }) => chatRepository.remove([id]).then(() => Upwork.removeJob(id)),
-          ],
+          pathEq('message.text', '/stop'),
+          ({
+            message: {
+              chat: { id },
+            },
+          }) => chatRepository.remove(id),
 
-          [
-            pathSatisfies(R.test(/^\/changeUpworkUrl /), 'message.text'),
-            ({
-              message: {
-                chat: { id },
-                text,
-              },
-            }) =>
-              chatRepository.updateByChatId(id, {
-                upworkUrl: R.replace(/^\/changeUpworkUrl /, '', text),
-              }),
-          ],
-        ]),
-      ),
-      x => Promise.all(x),
-    )(),
-)
+          pathSatisfies(R.test(/^\/setDevelopmentUrl /), 'message.text'),
+          ({ message: { text } }) =>
+            settingsRepository.update({
+              developmentUrl: R.replace(/^\/setDevelopmentUrl /, '', text),
+            }),
 
-export const sendMessage = R.compose(
-  paramsToContext('text'),
-  inject({ name: 'chatRepository', singleton: ChatRepository }),
-)(
-  //
-  ({ text, chatRepository }) =>
-    pipeP(
-      () => chatRepository.getAll(),
-      R.map(({ chatId: chat_id }) =>
-        fetch(`${TELEGRAM_BASE}/sendMessage`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
-        }),
+          pathSatisfies(R.test(/^\/setDesignUrl /), 'message.text'),
+          ({ message: { text } }) =>
+            settingsRepository.update({
+              designUrl: R.replace(/^\/setDesignUrl /, '', text),
+            }),
+
+          pathEq('message.text', '/design'),
+          ({
+            message: {
+              chat: { id },
+            },
+          }) =>
+            chatRepository.updateByChatId(id, {
+              type: chatRepository.CHAT_TYPE.DESIGN,
+            }),
+
+          pathEq('message.text', '/development'),
+          ({
+            message: {
+              chat: { id },
+            },
+          }) =>
+            chatRepository.updateByChatId(id, {
+              type: chatRepository.CHAT_TYPE.DEVELOPMENT,
+            }),
+        ),
       ),
       x => Promise.all(x),
     )(),
@@ -105,4 +100,25 @@ export const sendMessageToChat = R.curry((chat_id, text) =>
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
   }),
+)
+
+export const sendMessage = R.compose(
+  paramsToContext('text'),
+  inject({ name: 'chatRepository', singleton: ChatRepository }),
+)(
+  //
+  ({ text, chatRepository }) =>
+    pipeP(
+      () => chatRepository.find(),
+      R.map(({ chatId }) => sendMessageToChat(chatId, text)),
+      x => Promise.all(x),
+    )(),
+)
+
+export const sendMessagesToChat = R.curry((chatId, texts) =>
+  R.pipe(
+    () => texts,
+    R.map(sendMessageToChat(chatId)),
+    x => Promise.all(x),
+  )(),
 )
