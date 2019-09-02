@@ -94,25 +94,6 @@ export const getUpdates = R.compose(
     )(),
 )
 
-export const sendMessage = R.compose(
-  paramsToContext('text'),
-  inject({ name: 'chatRepository', singleton: ChatRepository }),
-)(
-  //
-  ({ text, chatRepository }) =>
-    pipeP(
-      () => chatRepository.find(),
-      R.map(({ chatId: chat_id }) =>
-        fetch(`${TELEGRAM_BASE}/sendMessage`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
-        }),
-      ),
-      x => Promise.all(x),
-    )(),
-)
-
 export const sendMessageToChat = R.curry((chat_id, text) =>
   fetch(`${TELEGRAM_BASE}/sendMessage`, {
     method: 'POST',
@@ -121,16 +102,23 @@ export const sendMessageToChat = R.curry((chat_id, text) =>
   }),
 )
 
-export const sendMessagesToChat = R.curry((chat_id, texts) =>
+export const sendMessage = R.compose(
+  paramsToContext('text'),
+  inject({ name: 'chatRepository', singleton: ChatRepository }),
+)(
+  //
+  ({ text, chatRepository }) =>
+    pipeP(
+      () => chatRepository.find(),
+      R.map(({ chatId }) => sendMessageToChat(chatId, text)),
+      x => Promise.all(x),
+    )(),
+)
+
+export const sendMessagesToChat = R.curry((chatId, texts) =>
   R.pipe(
     () => texts,
-    R.map(text =>
-      fetch(`${TELEGRAM_BASE}/sendMessage`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
-      }),
-    ),
+    R.map(sendMessageToChat(chatId)),
     x => Promise.all(x),
   )(),
 )

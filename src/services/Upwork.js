@@ -1,12 +1,12 @@
 import parser from 'fast-xml-parser'
-import { pipeP, path } from '../utils'
+import { pipeP, pathOr } from '../utils'
 import fetch from 'node-fetch'
 import * as R from 'ramda'
 import { inject, paramsToContext } from '../aspects'
 import * as TelegramBot from './TelegramBot'
 import { ChatRepository } from '../modules/chat'
 import { SettingsRepository } from '../modules/settings'
-import entities from 'entities'
+import { decodeHTML } from 'entities'
 
 const chatTypes = {
   development: ChatRepository.CHAT_TYPE.DEVELOPMENT,
@@ -27,7 +27,7 @@ export const updateFeed = R.compose(
       ({ [`${type}Url`]: url }) => fetch(url),
       x => x.text(),
       x => parser.parse(x),
-      path('rss.channel.item'),
+      pathOr([], 'rss.channel.item'),
       R.map(R.evolve({ pubDate: x => new Date(x).getTime() })),
 
       // Filter feed, leave only new
@@ -50,7 +50,8 @@ export const updateFeed = R.compose(
       R.map(
         R.pipe(
           ({ title, description }) => `<b>${title}</b>\n${description}`,
-          x => entities.decodeHTML(x),
+          R.replace(/<br \/>/g, '\n'),
+          decodeHTML,
         ),
       ),
       x => Promise.all([chatRepository.find({ type: chatTypes[type] }), x]),
