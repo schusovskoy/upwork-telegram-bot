@@ -46,7 +46,7 @@ upworkQueue.add(
   {
     repeat: {
       jobId: 'development',
-      every: parseInt(ENV.UPWORK_POLLING_TIMEOUT),
+      cron: ENV.DEVELOPMENT_CRON,
     },
   },
 )
@@ -55,7 +55,7 @@ upworkQueue.add(
   {
     repeat: {
       jobId: 'design',
-      every: parseInt(ENV.UPWORK_POLLING_TIMEOUT),
+      cron: ENV.DESIGN_CRON,
     },
   },
 )

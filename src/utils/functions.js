@@ -84,7 +84,15 @@ export const pathSatisfies = R.curry((pred, path, obj) =>
     () => path,
     pathStrToArr,
     R.pathSatisfies(pred, R.__, obj),
-  ),
+  )(),
+)
+
+export const pathOr = R.curry((defaultValue, path, obj) =>
+  R.pipe(
+    () => path,
+    pathStrToArr,
+    R.pathOr(defaultValue, R.__, obj),
+  )(),
 )
 
 const pathStrToArr = path =>
