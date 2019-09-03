@@ -2,7 +2,7 @@ import fetch from 'node-fetch'
 import { BOT_TIMEOUT } from '../config/constants'
 import * as R from 'ramda'
 import { pipeP, ENV, pathEq, pathSatisfies, cond } from '../utils'
-import { inject, paramsToContext } from '../aspects'
+import { inject } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
 
@@ -94,31 +94,25 @@ export const getUpdates = R.compose(
     )(),
 )
 
-export const sendMessageToChat = R.curry((chat_id, text) =>
+export const sendMessage = params =>
   fetch(`${TELEGRAM_BASE}/sendMessage`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' }),
-  }),
-)
+    body: JSON.stringify({ parse_mode: 'HTML', ...params }),
+  })
 
-export const sendMessage = R.compose(
-  paramsToContext('text'),
-  inject({ name: 'chatRepository', singleton: ChatRepository }),
-)(
-  //
-  ({ text, chatRepository }) =>
-    pipeP(
-      () => chatRepository.find(),
-      R.map(({ chatId }) => sendMessageToChat(chatId, text)),
-      x => Promise.all(x),
-    )(),
-)
-
-export const sendMessagesToChat = R.curry((chatId, texts) =>
+export const sendPostsToChat = (chatId, posts) =>
   R.pipe(
-    () => texts,
-    R.map(sendMessageToChat(chatId)),
+    () => posts,
+    R.map(({ id, title, description }) => ({
+      text: `#${id}\n<b>${title}</b>\n${description}`,
+      chat_id: chatId,
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: 'Зааплаил', callback_data: `{"id":${id},"type":"APPLY"}` }],
+        ],
+      },
+    })),
+    R.map(sendMessage),
     x => Promise.all(x),
-  )(),
-)
+  )()

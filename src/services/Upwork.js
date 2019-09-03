@@ -38,10 +38,17 @@ export const updateFeed = R.compose(
       pathOr([], 'rss.channel.item'),
       R.map(R.evolve({ pubDate: x => new Date(x).getTime() })),
 
-      // Filter feed, leave only new
-      x => Promise.all([settingsRepository.get(), x]),
-      ([{ [`${type}LastPubDate`]: lastPubDate }, x]) =>
-        R.filter(({ pubDate }) => lastPubDate < pubDate, x),
+      // Filter feed, leave only new in production
+      // Simply take first in development
+      R.ifElse(
+        () => process.env.NODE_ENV === 'production',
+        pipeP(
+          x => Promise.all([settingsRepository.get(), x]),
+          ([{ [`${type}LastPubDate`]: lastPubDate }, x]) =>
+            R.filter(({ pubDate }) => lastPubDate < pubDate, x),
+        ),
+        R.slice(0, 1),
+      ),
 
       // Update lastPubDate
       R.tap(
@@ -69,14 +76,10 @@ export const updateFeed = R.compose(
       R.apply(postRepository.create),
 
       // Send posts to chats
-      R.map(
-        ({ id, title, description }) =>
-          `#${id}\n<b>${title}</b>\n${description}`,
-      ),
       x => Promise.all([chatRepository.find({ type: chatTypes[type] }), x]),
       ([chats = [], posts]) =>
         R.map(
-          ({ chatId }) => telegramBot.sendMessagesToChat(chatId, posts),
+          ({ chatId }) => telegramBot.sendPostsToChat(chatId, posts),
           chats,
         ),
       x => Promise.all(x),
