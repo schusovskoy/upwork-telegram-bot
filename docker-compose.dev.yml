@@ -25,4 +25,4 @@ services:
       - POSTGRES_USER=codemonx
       - POSTGRES_DB=codemonx
     ports:
-      - 5434:5434
+      - 5432:5432

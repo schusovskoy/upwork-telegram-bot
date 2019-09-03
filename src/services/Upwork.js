@@ -7,6 +7,7 @@ import * as TelegramBot from './TelegramBot'
 import { ChatRepository } from '../modules/chat'
 import { SettingsRepository } from '../modules/settings'
 import { decodeHTML } from 'entities'
+import { PostRepository } from '../modules/post'
 
 const chatTypes = {
   development: ChatRepository.CHAT_TYPE.DEVELOPMENT,
@@ -18,9 +19,16 @@ export const updateFeed = R.compose(
   inject({ name: 'telegramBot', singleton: TelegramBot }),
   inject({ name: 'chatRepository', singleton: ChatRepository }),
   inject({ name: 'settingsRepository', singleton: SettingsRepository }),
+  inject({ name: 'postRepository', singleton: PostRepository }),
 )(
   //
-  ({ data: { type }, telegramBot, chatRepository, settingsRepository }) =>
+  ({
+    data: { type },
+    telegramBot,
+    chatRepository,
+    settingsRepository,
+    postRepository,
+  }) =>
     pipeP(
       // Fetch feed and parse
       () => settingsRepository.get(),
@@ -46,13 +54,24 @@ export const updateFeed = R.compose(
         ),
       ),
 
+      // Save posts
+      R.map(
+        R.applySpec({
+          title: R.prop('title'),
+          pubDate: R.prop('pubDate'),
+          description: R.pipe(
+            R.prop('description'),
+            R.replace(/<br \/>/g, '\n'),
+            decodeHTML,
+          ),
+        }),
+      ),
+      R.apply(postRepository.create),
+
       // Send posts to chats
       R.map(
-        R.pipe(
-          ({ title, description }) => `<b>${title}</b>\n${description}`,
-          R.replace(/<br \/>/g, '\n'),
-          decodeHTML,
-        ),
+        ({ id, title, description }) =>
+          `#${id}\n<b>${title}</b>\n${description}`,
       ),
       x => Promise.all([chatRepository.find({ type: chatTypes[type] }), x]),
       ([chats = [], posts]) =>

@@ -6,7 +6,7 @@ export const up = knex =>
       table.increments('id').primary()
       table.string('title').notNullable()
       table.text('description').notNullable()
-      table.integer('pubDate').unsigned()
+      table.bigInteger('pubDate').notNullable()
     }),
   ])
 
