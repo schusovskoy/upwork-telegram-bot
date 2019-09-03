@@ -55,9 +55,12 @@
     "entities": "^2.0.0",
     "express": "^4.17.1",
     "fast-xml-parser": "^3.12.20",
+    "knex": "^0.19.3",
     "mongoose": "^5.6.11",
     "morgan": "^1.9.1",
     "node-fetch": "^2.6.0",
+    "objection": "^1.6.9",
+    "pg": "^7.12.1",
     "ramda": "^0.26.1"
   },
   "devDependencies": {

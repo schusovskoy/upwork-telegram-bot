@@ -31,6 +31,18 @@ services:
       - job-storage-data:/data
     restart: always
 
+  sql-storage:
+    image: postgres:11.5-alpine
+    environment:
+      - TERM=xterm
+      - POSTGRES_PASSWORD=VW32n93N
+      - POSTGRES_USER=codemonx
+      - POSTGRES_DB=codemonx
+    volumes:
+      - sql-storage-data:/var/lib/postgresql/data
+    restart: always
+
 volumes:
   storage-data:
   job-storage-data:
+  sql-storage-data:

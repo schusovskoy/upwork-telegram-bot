@@ -1,6 +1,6 @@
-import * as R from 'ramda'
-import path from 'path'
-import dotenv from 'dotenv'
+const R = require('ramda')
+const path = require('path')
+const dotenv = require('dotenv')
 
 const defaultEnv = dotenv.config()
 
@@ -28,4 +28,4 @@ const ENV = R.mergeAll(
   ),
 )
 
-export default ENV
+module.exports = ENV

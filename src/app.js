@@ -2,11 +2,24 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import * as controllers from './config/controllers'
 import * as R from 'ramda'
-import { prodOrNot, wait, ENV, addReqLogger, Logger } from './utils'
+import { prodOrNot, wait, ENV, addReqLogger, Logger, pipeP } from './utils'
 import mongoose from 'mongoose'
 import { TelegramBot, Upwork } from './services'
 import { POLLING_ERROR_TIMEOUT } from './config/constants'
 import Queue from 'bull'
+import Knex from 'knex'
+import knexConfig from '../knexfile'
+import { Model } from 'objection'
+
+const knex = Knex(knexConfig)
+pipeP(
+  () => knex.migrate.latest(),
+  () => knex.seed.run(),
+)()
+Model.knex(knex)
+prodOrNot(undefined, () =>
+  knex.on('query', ({ sql }) => Logger.log(`${sql}\n`)),
+)
 
 mongoose.connect(ENV.MONGO_URL, {
   useNewUrlParser: true,
