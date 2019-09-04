@@ -95,6 +95,14 @@ export const pathOr = R.curry((defaultValue, path, obj) =>
   )(),
 )
 
+export const hasPath = R.curry((path, obj) =>
+  R.pipe(
+    () => path,
+    pathStrToArr,
+    R.hasPath(R.__, obj),
+  )(),
+)
+
 const pathStrToArr = path =>
   R.pipe(
     () => path,

@@ -1,7 +1,15 @@
 import fetch from 'node-fetch'
 import { BOT_TIMEOUT } from '../config/constants'
 import * as R from 'ramda'
-import { pipeP, ENV, pathEq, pathSatisfies, cond, tapP } from '../utils'
+import {
+  pipeP,
+  ENV,
+  pathEq,
+  pathSatisfies,
+  cond,
+  tapP,
+  hasPath,
+} from '../utils'
 import { inject } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
@@ -40,7 +48,7 @@ export const getUpdates = R.compose(
       // Leave only commands
       R.filter(
         R.anyPass([
-          ({ callback_query }) => !!callback_query,
+          hasPath('callback_query'),
           pathSatisfies(R.test(/^\/.+/), 'message.text'),
         ]),
       ),
@@ -93,6 +101,10 @@ export const getUpdates = R.compose(
             chatRepository.updateByChatId(id, {
               type: chatRepository.CHAT_TYPE.DEVELOPMENT,
             }),
+
+          hasPath('callback_query'),
+          ({ callback_query: { id: callback_query_id } }) =>
+            answerCallback({ callback_query_id, text: 'Введите текст апплая' }),
         ),
       ),
       x => Promise.all(x),
@@ -121,3 +133,10 @@ export const sendPostsToChat = (chatId, posts) =>
     R.map(sendMessage),
     x => Promise.all(x),
   )()
+
+export const answerCallback = params =>
+  fetch(`${TELEGRAM_BASE}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(params),
+  })
