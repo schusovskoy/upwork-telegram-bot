@@ -1,7 +1,7 @@
 import fetch from 'node-fetch'
 import { BOT_TIMEOUT } from '../config/constants'
 import * as R from 'ramda'
-import { pipeP, ENV, pathEq, pathSatisfies, cond } from '../utils'
+import { pipeP, ENV, pathEq, pathSatisfies, cond, tapP } from '../utils'
 import { inject } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
@@ -28,7 +28,7 @@ export const getUpdates = R.compose(
       R.prop('result'),
 
       // Update lastUpdateId
-      R.tap(
+      tapP(
         R.pipe(
           R.last,
           R.prop('update_id'),
@@ -38,7 +38,12 @@ export const getUpdates = R.compose(
       ),
 
       // Leave only commands
-      R.filter(pathSatisfies(R.test(/^\/.+/), 'message.text')),
+      R.filter(
+        R.anyPass([
+          ({ callback_query }) => !!callback_query,
+          pathSatisfies(R.test(/^\/.+/), 'message.text'),
+        ]),
+      ),
 
       // Process commands
       R.map(

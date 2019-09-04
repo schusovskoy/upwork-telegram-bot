@@ -1,5 +1,5 @@
 import parser from 'fast-xml-parser'
-import { pipeP, pathOr } from '../utils'
+import { pipeP, pathOr, tapP } from '../utils'
 import fetch from 'node-fetch'
 import * as R from 'ramda'
 import { inject, paramsToContext } from '../aspects'
@@ -51,7 +51,7 @@ export const updateFeed = R.compose(
       ),
 
       // Update lastPubDate
-      R.tap(
+      tapP(
         R.pipe(
           R.head,
           R.prop('pubDate'),

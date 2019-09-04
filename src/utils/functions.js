@@ -107,3 +107,9 @@ export const cond = (...fns) =>
     R.cond,
     R.splitEvery(2),
   )(fns)
+
+export const tapP = fn => x =>
+  pipeP(
+    () => Promise.resolve(fn(x)),
+    () => x,
+  )()
