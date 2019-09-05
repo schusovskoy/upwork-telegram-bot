@@ -162,6 +162,37 @@ export const getUpdates = R.compose(
                 )(),
             )(),
 
+          R.pipe(
+            path('callback_query.data'),
+            jsonPathEq('type', 'ANSWER'),
+          ),
+          ({
+            callback_query: {
+              id: callback_query_id,
+              data,
+              message: {
+                message_id,
+                chat: { id: chatId },
+              },
+            },
+          }) =>
+            pipeP(
+              () =>
+                answerCallback({
+                  callback_query_id,
+                  text: 'Ок, понял!',
+                }),
+              () => JSON.parse(data),
+              ({ id, answered }) => postRepository.upsert({ id, answered }),
+              x =>
+                editMessageText({
+                  message_id,
+                  chat_id: chatId,
+                  text: getMessageText(x),
+                  reply_markup: getReplyMarkup(x),
+                }),
+            )(),
+
           R.T,
           ({
             message: {
@@ -239,12 +270,20 @@ const getMessageText = ({ id, title, description, apply, applyTime }) =>
         )}</b>`
   }`
 
-const getReplyMarkup = ({ id }) => ({
+const getReplyMarkup = ({ id, answered }) => ({
   inline_keyboard: [
     [
       {
         text: 'Зааплаил',
         callback_data: JSON.stringify({ id, type: 'APPLY' }),
+      },
+      {
+        text: answered ? 'Не ответил' : 'Ответил',
+        callback_data: JSON.stringify({
+          id,
+          answered: !answered,
+          type: 'ANSWER',
+        }),
       },
     ],
   ],

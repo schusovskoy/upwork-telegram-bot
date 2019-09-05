@@ -8,6 +8,7 @@ export const up = knex =>
     table.bigInteger('pubDate').notNullable()
     table.text('apply')
     table.bigInteger('applyTime')
+    table.boolean('answered').defaultTo(false)
   })
 
 export const down = knex => knex.schema.dropTable(Post.tableName)
