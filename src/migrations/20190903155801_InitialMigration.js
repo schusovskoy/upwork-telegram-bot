@@ -7,6 +7,7 @@ export const up = knex =>
       table.string('title').notNullable()
       table.text('description').notNullable()
       table.bigInteger('pubDate').notNullable()
+      table.text('apply')
     }),
   ])
 

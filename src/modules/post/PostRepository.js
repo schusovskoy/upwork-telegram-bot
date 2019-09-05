@@ -8,3 +8,10 @@ export const create = (...posts) =>
     K.query(),
     K.insertAndFetch(posts),
   )()
+
+export const upsert = post =>
+  R.pipe(
+    () => Post,
+    K.query(),
+    K.upsertGraphAndFetch(post),
+  )()

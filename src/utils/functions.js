@@ -103,6 +103,17 @@ export const hasPath = R.curry((path, obj) =>
   )(),
 )
 
+export const jsonPathEq = R.curry((path, val, str) =>
+  typeof str === 'string'
+    ? R.pipe(
+        () => path,
+        pathStrToArr,
+        x => [x, val, JSON.parse(str)],
+        R.apply(R.pathEq),
+      )()
+    : false,
+)
+
 const pathStrToArr = path =>
   R.pipe(
     () => path,

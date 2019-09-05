@@ -9,19 +9,23 @@ import {
   cond,
   tapP,
   hasPath,
+  path,
+  jsonPathEq,
 } from '../utils'
 import { inject } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
+import { PostRepository } from '../modules/post'
 
 const TELEGRAM_BASE = `https://api.telegram.org/bot${ENV.BOT_TOKEN}`
 
 export const getUpdates = R.compose(
   inject({ name: 'settingsRepository', singleton: SettingsRepository }),
   inject({ name: 'chatRepository', singleton: ChatRepository }),
+  inject({ name: 'postRepository', singleton: PostRepository }),
 )(
   //
-  ({ settingsRepository, chatRepository }) =>
+  ({ settingsRepository, chatRepository, postRepository }) =>
     pipeP(
       // Fetch new messages
       () => settingsRepository.get(),
@@ -45,13 +49,26 @@ export const getUpdates = R.compose(
         ),
       ),
 
-      // Leave only commands
-      R.filter(
-        R.anyPass([
-          hasPath('callback_query'),
-          pathSatisfies(R.test(/^\/.+/), 'message.text'),
+      // Get not idling chats
+      x =>
+        Promise.all([
+          x,
+          chatRepository.find({
+            state: { $ne: chatRepository.CHAT_STATE.IDLE },
+          }),
         ]),
-      ),
+      ([x, chats]) => [x, R.pluck('chatId', chats)],
+
+      // Leave only commands
+      ([x, chats]) =>
+        R.filter(
+          R.anyPass([
+            hasPath('callback_query'),
+            pathSatisfies(R.test(/^\/.+/), 'message.text'),
+            pathSatisfies(R.contains(R.__, chats), 'message.chat.id'),
+          ]),
+          x,
+        ),
 
       // Process commands
       R.map(
@@ -102,9 +119,55 @@ export const getUpdates = R.compose(
               type: chatRepository.CHAT_TYPE.DEVELOPMENT,
             }),
 
-          hasPath('callback_query'),
-          ({ callback_query: { id: callback_query_id } }) =>
-            answerCallback({ callback_query_id, text: 'Введите текст апплая' }),
+          R.pipe(
+            path('callback_query.data'),
+            jsonPathEq('type', 'APPLY'),
+          ),
+          ({
+            callback_query: {
+              id: callback_query_id,
+              data,
+              message: {
+                chat: { id: chatId },
+              },
+            },
+          }) =>
+            pipeP(
+              () =>
+                answerCallback({
+                  callback_query_id,
+                  text: 'Введи текст апплая',
+                }),
+              () => JSON.parse(data),
+              ({ id: postId }) =>
+                chatRepository.updateByChatId(chatId, {
+                  state: chatRepository.CHAT_STATE.WAITING_FOR_APPLY,
+                  postId,
+                }),
+            )(),
+
+          R.T,
+          ({
+            message: {
+              chat: { id: chatId },
+              text: apply,
+            },
+          }) =>
+            pipeP(
+              () => chatRepository.findByChatId(chatId),
+              cond(
+                R.propEq('state', chatRepository.CHAT_STATE.WAITING_FOR_APPLY),
+                ({ postId: id }) =>
+                  pipeP(
+                    () => postRepository.upsert({ id, apply }),
+                    () =>
+                      chatRepository.updateByChatId(chatId, {
+                        state: chatRepository.CHAT_STATE.IDLE,
+                        postId: id,
+                      }),
+                  )(),
+              ),
+            )(),
         ),
       ),
       x => Promise.all(x),
@@ -126,7 +189,12 @@ export const sendPostsToChat = (chatId, posts) =>
       chat_id: chatId,
       reply_markup: {
         inline_keyboard: [
-          [{ text: 'Зааплаил', callback_data: `{"id":${id},"type":"APPLY"}` }],
+          [
+            {
+              text: 'Зааплаил',
+              callback_data: JSON.stringify({ id, type: 'APPLY' }),
+            },
+          ],
         ],
       },
     })),
