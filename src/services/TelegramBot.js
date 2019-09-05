@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'
-import { BOT_TIMEOUT } from '../config/constants'
+import { BOT_TIMEOUT, CHANGE_STATE_TIMEOUT } from '../config/constants'
 import * as R from 'ramda'
 import {
   pipeP,
@@ -11,12 +11,14 @@ import {
   hasPath,
   path,
   jsonPathEq,
+  Logger,
 } from '../utils'
 import { inject } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
 import { PostRepository } from '../modules/post'
 import { format } from 'date-fns/fp'
+import Queue from 'bull'
 
 const TELEGRAM_BASE = `https://api.telegram.org/bot${ENV.BOT_TOKEN}`
 
@@ -144,11 +146,20 @@ export const getUpdates = R.compose(
                 }),
               () => JSON.parse(data),
               ({ id: postId }) =>
-                chatRepository.updateByChatId(chatId, {
-                  state: chatRepository.CHAT_STATE.WAITING_FOR_APPLY,
-                  postId,
-                  messageId,
-                }),
+                pipeP(
+                  () =>
+                    chatRepository.updateByChatId(chatId, {
+                      state: chatRepository.CHAT_STATE.WAITING_FOR_APPLY,
+                      postId,
+                      messageId,
+                    }),
+                  () =>
+                    telegramQueue.add(
+                      'setChatIdle',
+                      { chatId },
+                      { delay: CHANGE_STATE_TIMEOUT },
+                    ),
+                )(),
             )(),
 
           R.T,
@@ -238,3 +249,13 @@ const getReplyMarkup = ({ id }) => ({
     ],
   ],
 })
+
+const telegramQueue = new Queue('telegram', ENV.REDIS_URL)
+telegramQueue.process('setChatIdle', ({ data: { chatId } }) =>
+  ChatRepository.updateByChatId(chatId, {
+    state: ChatRepository.CHAT_STATE.IDLE,
+  }),
+)
+telegramQueue.on('failed', (job, err) =>
+  Logger.error('TelegramBot queue error: ', job, err),
+)
