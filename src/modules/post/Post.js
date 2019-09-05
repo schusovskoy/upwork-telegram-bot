@@ -1,7 +1,7 @@
-import { Model } from 'objection'
+import BaseModel from '../BaseModel'
 
-class Post extends Model {
-  static tableName = Post.name
+class Post extends BaseModel {
+  static tableName = Post.name.toLowerCase()
 }
 
 export default Post
