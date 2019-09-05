@@ -16,8 +16,11 @@ import { inject } from '../aspects'
 import { SettingsRepository } from '../modules/settings'
 import { ChatRepository } from '../modules/chat'
 import { PostRepository } from '../modules/post'
+import { format } from 'date-fns/fp'
 
 const TELEGRAM_BASE = `https://api.telegram.org/bot${ENV.BOT_TOKEN}`
+
+const APPLY_SEPARATOR = '<b>==========APPLY==========</b>'
 
 export const getUpdates = R.compose(
   inject({ name: 'settingsRepository', singleton: SettingsRepository }),
@@ -128,6 +131,7 @@ export const getUpdates = R.compose(
               id: callback_query_id,
               data,
               message: {
+                message_id: messageId,
                 chat: { id: chatId },
               },
             },
@@ -143,6 +147,7 @@ export const getUpdates = R.compose(
                 chatRepository.updateByChatId(chatId, {
                   state: chatRepository.CHAT_STATE.WAITING_FOR_APPLY,
                   postId,
+                  messageId,
                 }),
             )(),
 
@@ -150,20 +155,26 @@ export const getUpdates = R.compose(
           ({
             message: {
               chat: { id: chatId },
-              text: apply,
+              text,
             },
           }) =>
             pipeP(
               () => chatRepository.findByChatId(chatId),
               cond(
                 R.propEq('state', chatRepository.CHAT_STATE.WAITING_FOR_APPLY),
-                ({ postId: id }) =>
+                ({ postId: id, messageId: message_id }) =>
                   pipeP(
-                    () => postRepository.upsert({ id, apply }),
                     () =>
                       chatRepository.updateByChatId(chatId, {
                         state: chatRepository.CHAT_STATE.IDLE,
-                        postId: id,
+                      }),
+                    () => postRepository.upsert({ id, apply: text }),
+                    x =>
+                      editMessageText({
+                        message_id,
+                        chat_id: chatId,
+                        text: getMessageText(x),
+                        reply_markup: getReplyMarkup(x),
                       }),
                   )(),
               ),
@@ -184,19 +195,10 @@ export const sendMessage = params =>
 export const sendPostsToChat = (chatId, posts) =>
   R.pipe(
     () => posts,
-    R.map(({ id, title, description }) => ({
-      text: `#${id}\n<b>${title}</b>\n${description}`,
+    R.map(post => ({
       chat_id: chatId,
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: 'Зааплаил',
-              callback_data: JSON.stringify({ id, type: 'APPLY' }),
-            },
-          ],
-        ],
-      },
+      text: getMessageText(post),
+      reply_markup: getReplyMarkup(post),
     })),
     R.map(sendMessage),
     x => Promise.all(x),
@@ -208,3 +210,31 @@ export const answerCallback = params =>
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(params),
   })
+
+export const editMessageText = params =>
+  fetch(`${TELEGRAM_BASE}/editMessageText`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ parse_mode: 'HTML', ...params }),
+  })
+
+const getMessageText = ({ id, title, description, apply, applyTime }) =>
+  `#${id}\n<b>${title}</b>\n${description}${
+    !apply
+      ? ''
+      : `\n${APPLY_SEPARATOR}\n${apply}\n<b>${format(
+          'dd.MM.yyyy HH:mm:ss',
+          new Date(parseInt(applyTime)),
+        )}</b>`
+  }`
+
+const getReplyMarkup = ({ id }) => ({
+  inline_keyboard: [
+    [
+      {
+        text: 'Зааплаил',
+        callback_data: JSON.stringify({ id, type: 'APPLY' }),
+      },
+    ],
+  ],
+})

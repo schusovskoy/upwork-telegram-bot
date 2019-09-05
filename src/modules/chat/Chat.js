@@ -17,6 +17,7 @@ const chatSchema = mongoose.Schema({
   type: { type: String, enum: R.values(CHAT_TYPE) },
   state: { type: String, enum: R.values(CHAT_STATE) },
   postId: Number,
+  messageId: Number,
 })
 
 export default mongoose.model('Chat', chatSchema)
