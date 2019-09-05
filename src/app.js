@@ -2,10 +2,24 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import * as controllers from './config/controllers'
 import * as R from 'ramda'
-import { prodOrNot, wait, ENV, addReqLogger, Logger } from './utils'
+import { prodOrNot, wait, ENV, addReqLogger, Logger, pipeP } from './utils'
 import mongoose from 'mongoose'
-import { TelegramBot } from './services'
+import { TelegramBot, Upwork } from './services'
 import { POLLING_ERROR_TIMEOUT } from './config/constants'
+import Queue from 'bull'
+import Knex from 'knex'
+import knexConfig from '../knexfile'
+import { Model } from 'objection'
+
+const knex = Knex(knexConfig)
+pipeP(
+  () => knex.migrate.latest(),
+  () => knex.seed.run(),
+)()
+Model.knex(knex)
+prodOrNot(undefined, () =>
+  knex.on('query', ({ sql }) => Logger.log(`${sql}\n`)),
+)
 
 mongoose.connect(ENV.MONGO_URL, {
   useNewUrlParser: true,
@@ -29,10 +43,34 @@ const pollTelegram = () =>
   TelegramBot.getUpdates()
     .catch(
       x =>
-        Logger.error('Telegram polling Error: ', x) ||
+        Logger.error('Telegram polling error: ', x) ||
         wait(POLLING_ERROR_TIMEOUT),
     )
     .then(pollTelegram)
 pollTelegram()
+
+const upworkQueue = new Queue('upwork', ENV.REDIS_URL)
+upworkQueue.process(({ data }) => Upwork.updateFeed(data))
+upworkQueue.on('failed', (job, err) =>
+  Logger.error('Upwork polling error: ', job, err),
+)
+upworkQueue.add(
+  { type: 'development' },
+  {
+    repeat: {
+      jobId: 'development',
+      cron: ENV.DEVELOPMENT_CRON,
+    },
+  },
+)
+upworkQueue.add(
+  { type: 'design' },
+  {
+    repeat: {
+      jobId: 'design',
+      cron: ENV.DESIGN_CRON,
+    },
+  },
+)
 
 app.listen(3000, () => Logger.info('Server is listening on port 3000'))

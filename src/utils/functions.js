@@ -84,7 +84,34 @@ export const pathSatisfies = R.curry((pred, path, obj) =>
     () => path,
     pathStrToArr,
     R.pathSatisfies(pred, R.__, obj),
-  ),
+  )(),
+)
+
+export const pathOr = R.curry((defaultValue, path, obj) =>
+  R.pipe(
+    () => path,
+    pathStrToArr,
+    R.pathOr(defaultValue, R.__, obj),
+  )(),
+)
+
+export const hasPath = R.curry((path, obj) =>
+  R.pipe(
+    () => path,
+    pathStrToArr,
+    R.hasPath(R.__, obj),
+  )(),
+)
+
+export const jsonPathEq = R.curry((path, val, str) =>
+  typeof str === 'string'
+    ? R.pipe(
+        () => path,
+        pathStrToArr,
+        x => [x, val, JSON.parse(str)],
+        R.apply(R.pathEq),
+      )()
+    : false,
 )
 
 const pathStrToArr = path =>
@@ -92,4 +119,16 @@ const pathStrToArr = path =>
     () => path,
     R.match(/[^[\].]+/g),
     R.map(x => parseInt(x) || x),
+  )()
+
+export const cond = (...fns) =>
+  R.compose(
+    R.cond,
+    R.splitEvery(2),
+  )(fns)
+
+export const tapP = fn => x =>
+  pipeP(
+    () => Promise.resolve(fn(x)),
+    () => x,
   )()

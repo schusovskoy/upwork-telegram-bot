@@ -16,3 +16,13 @@ services:
       - TERM=xterm
     ports:
       - 6379:6379
+
+  sql-storage:
+    image: postgres:11.5-alpine
+    environment:
+      - TERM=xterm
+      - POSTGRES_PASSWORD=VW32n93N
+      - POSTGRES_USER=codemonx
+      - POSTGRES_DB=codemonx
+    ports:
+      - 5432:5432
