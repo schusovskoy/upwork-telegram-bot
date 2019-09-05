@@ -1,8 +1,8 @@
-import { Model, snakeCaseMappers } from 'objection'
+import { Model } from 'objection'
 
 class BaseModel extends Model {
-  static get columnNameMappers() {
-    return snakeCaseMappers()
+  static get tableName() {
+    return this.name
   }
 }
 

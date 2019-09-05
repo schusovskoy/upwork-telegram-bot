@@ -5,9 +5,9 @@ export const up = knex =>
     table.increments('id').primary()
     table.string('title').notNullable()
     table.text('description').notNullable()
-    table.bigInteger('pub_date').notNullable()
+    table.bigInteger('pubDate').notNullable()
     table.text('apply')
-    table.bigInteger('apply_time')
+    table.bigInteger('applyTime')
   })
 
 export const down = knex => knex.schema.dropTable(Post.tableName)
